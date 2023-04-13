@@ -1,22 +1,25 @@
 use std::fs;
-use std::io::prelude::*;
-use std::net::TcpListener;
-use std::net::TcpStream;
+use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:8000").unwrap();
+#[tokio::main]
+async fn main() {
+    let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();
 
-    for stream in listener.incoming() {
-        let stream = stream.unwrap();
+    println!("Listening on 'http://127.0.0.1:8000'");
 
-        handle_connection(stream);
+    loop {
+        let (stream, _) = listener.accept().await.unwrap();
+        handle_connection(stream).await;
     }
 }
 
-fn handle_connection(mut stream: TcpStream) {
+async fn handle_connection(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
 
-    stream.read(&mut buffer).unwrap();
+    stream.read(&mut buffer).await.unwrap();
 
     let contents = fs::read_to_string("index.html").unwrap();
 
@@ -26,7 +29,6 @@ fn handle_connection(mut stream: TcpStream) {
         contents
     );
 
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
+    stream.write_all(response.as_bytes()).await.unwrap();
     // println!("Request:\n\n {}", String::from_utf8_lossy(&buffer[..]))
 }
